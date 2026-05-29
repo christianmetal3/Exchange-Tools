@@ -26,9 +26,9 @@ Write-Host ""
 
 # The administrator is prompted to enter their admin credentials.
 $Creds = Read-Host -Prompt "Please enter your admin account email"
-
+#connect to the exchange server
 Connect-ExchangeOnline -UserPrincipalName $Creds -ShowBanner:$false 
-
+# Prompts for a user to check
 $User = Read-Host -Prompt "Please enter the users name of the recipient to check. example first.last name"
 $RecipientIdentity=(Get-Recipient $User).Identity 
 Write-Host "Searching for mailboxes forwarding to $RecipientIdentity..." -ForegroundColor Green
