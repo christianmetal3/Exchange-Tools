@@ -11,7 +11,8 @@ A utility designed for tenant-wide auditing and remediation of internal mailbox 
 
 ## Features
 
-- **PowerShell 7 Enforced Check**: Gracefully exits with installation instructions if run under an unsupported PowerShell version.
+- **PowerShell 7 Enforced Check**: Gracefully exits with installation/download instructions if run under an unsupported PowerShell version.
+- **ExchangeOnlineManagement Module Check**: Verifies that the required Exchange Online module is installed, providing setup commands if it is missing.
 - **Exchange Online Integration**: Automates connection to Exchange Online using standard modern authentication prompts.
 - **Tenant-Wide Auditing**: Scans all mailboxes in the tenant to detect active forwarding rules to the target recipient.
 - **Interactive Remediation Menu**:

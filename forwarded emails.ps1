@@ -6,6 +6,14 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
     return
 }
 
+# Check Exchange Online Management Module
+if (-not (Get-Module -ListAvailable -Name ExchangeOnlineManagement)) {
+    Write-Host "Error: The 'ExchangeOnlineManagement' module is not installed." -ForegroundColor Red
+    Write-Host "Please install it by running the following command in an elevated PowerShell session:" -ForegroundColor Yellow
+    Write-Host "    Install-Module -Name ExchangeOnlineManagement -Force" -ForegroundColor White
+    return
+}
+
 #Banner
 Clear-Host
 
