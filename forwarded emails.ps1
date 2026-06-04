@@ -1,3 +1,11 @@
+# Check PowerShell Version
+if ($PSVersionTable.PSVersion.Major -lt 7) {
+    Write-Host "Error: PowerShell 7 or higher is required to run this script." -ForegroundColor Red
+    Write-Host "Current version: $($PSVersionTable.PSVersion.ToString())" -ForegroundColor Yellow
+    Write-Host "Please run the script using Powershell 7 to install it go to https://github.com/PowerShell/PowerShell/releases/download/v7.6.2/PowerShell-7.6.2-win-x64.msi" -ForegroundColor White
+    return
+}
+
 #Banner
 Clear-Host
 
@@ -30,6 +38,56 @@ $Creds = Read-Host -Prompt "Please enter your admin account email"
 Connect-ExchangeOnline -UserPrincipalName $Creds -ShowBanner:$false 
 # Prompts for a user to check
 $User = Read-Host -Prompt "Please enter the users name of the recipient to check. example first.last name"
-$RecipientIdentity=(Get-Recipient $User).Identity 
+$RecipientIdentity = (Get-Recipient $User).Identity 
 Write-Host "Searching for mailboxes forwarding to $RecipientIdentity..." -ForegroundColor Green
-Get-Mailbox -ResultSize unlimited | where {$_.ForwardingAddress -eq $RecipientIdentity} | select Name, Alias
+$Mailboxes = @(Get-Mailbox -ResultSize unlimited | Where-Object { $_.ForwardingAddress -eq $RecipientIdentity })
+
+if ($Mailboxes.Count -eq 0) {
+    Write-Host "No mailboxes found forwarding to $RecipientIdentity." -ForegroundColor Yellow
+}
+else {
+    Write-Host "`nFound the following mailboxes forwarding to $RecipientIdentity :" -ForegroundColor Cyan
+    $Mailboxes | Select-Object Name, Alias, ForwardingAddress | Format-Table -AutoSize
+
+    Write-Host "`nSelect an option to proceed:" -ForegroundColor Cyan
+    Write-Host "1) Interactively decide to unforward each mailbox"
+    Write-Host "2) Unforward ALL of the above mailboxes"
+    Write-Host "3) Exit (keep forwarding settings unchanged)"
+    
+    $Choice = Read-Host -Prompt "Enter choice (1, 2, or 3)"
+
+    switch ($Choice) {
+        "1" {
+            foreach ($Mailbox in $Mailboxes) {
+                $Confirm = Read-Host -Prompt "Unforward mailbox '$($Mailbox.Name)' ($($Mailbox.UserPrincipalName))? (Y/N)"
+                if ($Confirm -eq "Y" -or $Confirm -eq "y") {
+                    Write-Host "Removing forwarding to $RecipientIdentity for $($Mailbox.Name)..." -ForegroundColor Yellow
+                    Set-Mailbox -Identity $Mailbox.UserPrincipalName -ForwardingAddress $null
+                    Write-Host "Successfully unforwarded." -ForegroundColor Green
+                }
+                else {
+                    Write-Host "Skipped $($Mailbox.Name)." -ForegroundColor Gray
+                }
+            }
+        }
+        "2" {
+            $ConfirmAll = Read-Host -Prompt "Are you sure you want to unforward ALL $($Mailboxes.Count) mailboxes? (Y/N)"
+            if ($ConfirmAll -eq "Y" -or $ConfirmAll -eq "y") {
+                foreach ($Mailbox in $Mailboxes) {
+                    Write-Host "Removing forwarding to $RecipientIdentity for $($Mailbox.Name)..." -ForegroundColor Yellow
+                    Set-Mailbox -Identity $Mailbox.UserPrincipalName -ForwardingAddress $null
+                    Write-Host "Successfully unforwarded." -ForegroundColor Green
+                }
+            }
+            else {
+                Write-Host "Operation cancelled." -ForegroundColor Gray
+            }
+        }
+        "3" {
+            Write-Host "Exiting without making changes." -ForegroundColor Gray
+        }
+        default {
+            Write-Host "Invalid choice. Exiting without making changes." -ForegroundColor Red
+        }
+    }
+}
