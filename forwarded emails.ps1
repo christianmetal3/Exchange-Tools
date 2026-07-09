@@ -46,9 +46,18 @@ $Creds = Read-Host -Prompt "Please enter your admin account email"
 Connect-ExchangeOnline -UserPrincipalName $Creds -ShowBanner:$false 
 # Prompts for a user to check
 $User = Read-Host -Prompt "Please enter the users name of the recipient to check. example first.last name"
-$RecipientIdentity = (Get-Recipient $User).Identity 
+$Recipient = Get-Recipient $User -ErrorAction SilentlyContinue
+if (-not $Recipient) {
+    Write-Host "Error: Could not find a recipient matching '$User'. Check the name and try again." -ForegroundColor Red
+    Disconnect-ExchangeOnline -Confirm:$false
+    return
+}
+$RecipientIdentity = $Recipient.Identity
 Write-Host "Searching for mailboxes forwarding to $RecipientIdentity..." -ForegroundColor Green
-$Mailboxes = @(Get-Mailbox -ResultSize unlimited | Where-Object { $_.ForwardingAddress -eq $RecipientIdentity })
+# Filter server-side on the recipient's DN instead of downloading every mailbox
+# and filtering locally - dramatically faster in large tenants.
+$RecipientDN = $Recipient.DistinguishedName.Replace("'", "''")
+$Mailboxes = @(Get-EXOMailbox -ResultSize Unlimited -Filter "ForwardingAddress -eq '$RecipientDN'" -Properties Name, Alias, ForwardingAddress, UserPrincipalName)
 
 if ($Mailboxes.Count -eq 0) {
     Write-Host "No mailboxes found forwarding to $RecipientIdentity." -ForegroundColor Yellow
@@ -68,7 +77,7 @@ else {
         "1" {
             foreach ($Mailbox in $Mailboxes) {
                 $Confirm = Read-Host -Prompt "Unforward mailbox '$($Mailbox.Name)' ($($Mailbox.UserPrincipalName))? (Y/N)"
-                if ($Confirm -eq "Y" -or $Confirm -eq "y") {
+                if ($Confirm -eq "Y") {
                     Write-Host "Removing forwarding to $RecipientIdentity for $($Mailbox.Name)..." -ForegroundColor Yellow
                     Set-Mailbox -Identity $Mailbox.UserPrincipalName -ForwardingAddress $null
                     Write-Host "Successfully unforwarded." -ForegroundColor Green
@@ -80,7 +89,7 @@ else {
         }
         "2" {
             $ConfirmAll = Read-Host -Prompt "Are you sure you want to unforward ALL $($Mailboxes.Count) mailboxes? (Y/N)"
-            if ($ConfirmAll -eq "Y" -or $ConfirmAll -eq "y") {
+            if ($ConfirmAll -eq "Y") {
                 foreach ($Mailbox in $Mailboxes) {
                     Write-Host "Removing forwarding to $RecipientIdentity for $($Mailbox.Name)..." -ForegroundColor Yellow
                     Set-Mailbox -Identity $Mailbox.UserPrincipalName -ForwardingAddress $null
