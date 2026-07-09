@@ -39,7 +39,8 @@ Before running the script, ensure you have:
 1. Open PowerShell 7 (`pwsh.exe`).
 2. Navigate to the script directory:
    ```powershell
-   cd "C:\Users\Christianmetal3\Projects\Email Tools"
+   cd "<location-where>\Email Tools"
+
    ```
 3. Run the script:
    ```powershell
